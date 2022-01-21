@@ -4,6 +4,7 @@ hivemq:
   port: "1883"
   username: ""
   password: ""
+  # TODO: maybe just subscribe on each "from" mapped_topic
   subscribed_topics:
     - "debuglevel/OpenMQTTGateway/gateways/byMac/#"
   mapped_topics:
