@@ -6,7 +6,7 @@ PyYAML==5.4.1
 # REST/HTTP
 fastapi==0.65.3
 uvicorn==0.14.0
-aiofiles=0.7.0
+aiofiles==0.7.0
 
 # Persistence
 tinydb==4.4.0
@@ -14,3 +14,5 @@ tinydb==4.4.0
 
 # Retry
 #tenacity==6.2.0
+
+gmqtt==0.6.11

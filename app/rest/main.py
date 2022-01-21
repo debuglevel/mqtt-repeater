@@ -1,72 +1,105 @@
 #!/bin/usr/python3
+import argparse
+import configparser
 import logging.config
-from typing import Optional
-from fastapi import FastAPI
+import logging
+from multiprocessing.connection import Client
+import signal
+import asyncio
+from typing import List
+import gmqtt
 
-import app.library.person
-from app.library import health
-from app.rest.person import PersonIn, PersonOut
 
-fastapi = FastAPI()
+termination_event = asyncio.Event()
+
+clients = []
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-@fastapi.get("/health")
-def get_health():
-    logger.debug("Received GET request on /health")
-    return health.get_health()
+def on_connect(client, flags, rc, properties):
+    logging.info('[connected {}]'.format(client._client_id))
 
 
-@fastapi.get("/health_async")
-async def get_health_async():
-    logger.debug("Received GET request on /health_async")
-    return await health.get_health_async()
+def on_message(client, topic, payload, qos, properties):
+    logging.debug('[received message {}] topic: {} payload: {} QOS: {} properties: {}'
+                 .format(client._client_id, topic, payload, qos, properties))
+
+    for client in clients:
+        if client._client_id == client._client_id:
+            continue
+
+        # TODO: republish also properties
+        client.publish(topic, payload, qos=qos)   
 
 
-@fastapi.get("/")
-def read_root():
-    return {"Hello": "World"}
+def on_disconnect(client, packet, exc=None):
+    logging.info('[disconnected {}]'.format(client._client_id))
 
 
-@fastapi.get("/greetings/{greeting_id}")
-async def read_item(greeting_id: int, language: Optional[str] = None):
-    return {"greeting_id": greeting_id, "language": language, "greeting": f"Say Hello to ID {greeting_id} in {language}"}
+def on_subscribe(client, mid, qos, properties):
+    logging.info('[subscribed {}] QOS: {}'.format(client._client_id, qos))
 
-@fastapi.post("/persons/", response_model=PersonOut)
-async def post_person(input_person: PersonIn):
-    person: app.library.person.Person = await app.library.person.create_person(input_person.name)
-    return PersonOut(name=person.name, created_on=person.created_on)
 
-@fastapi.get("/persons/{name}", response_model=PersonOut)
-async def get_person(name: str):
-    person: app.library.person.Person = await app.library.person.get_person(name)
-    return PersonOut(name=person.name, created_on=person.created_on)
+def configure_callbacks(client):
+    logging.debug(f"Configuring client callbacks...")
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.on_disconnect = on_disconnect
+    client.on_subscribe = on_subscribe
 
-# def main():
-#     logger.info("Starting...")
-#
-#     # sleeptime = int(os.environ['SLEEP_INTERVAL'])
-#
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--some-host", help="some host", type=str, default="localhost")
-#     parser.add_argument("--some-port", help="some port", type=int, default=8080)
-#     args = parser.parse_args()
-#     # args.some_port
-#     # args.some_host
-#
-#     uvicorn.run(fastapi, host="0.0.0.0", port=8080)
-#
-#
-#
-# def main():
-#     import uvicorn
-#     import yaml
-#     logging.config.dictConfig(yaml.load(open("app/logging-config.yaml", 'r')))  # configured via cmdline
-#     logger.info("Starting via main()...")
-#     uvicorn.run(fastapi, host="0.0.0.0", port=8080)
-#
-# # This only runs if the script is called instead of uvicorn; should probably not be used.
-# if __name__ == "__main__":
-#     main()
+
+def set_termination(*args):
+    logging.info("Received SIGTERM or SIGKILL")
+    termination_event.set()
+
+
+async def disconnect_clients(clients: List[Client]):
+    logging.info(f"Disconncting clients...")
+    for client in clients:
+        logging.debug(f"Disconncting client {client}...")
+        await client.disconnect()
+
+async def main(config):
+    global clients
+
+    logging.info(f"Connecting clients...")
+    for client_name in config.keys():
+        logging.debug(f"Configuring client...")
+        client = gmqtt.Client(client_name, clean_session=False, session_expiry_interval=0xFFFFFFFF)
+        configure_callbacks(client)
+        client.set_auth_credentials(config[client_name]['username'],
+                                    config[client_name]['password'])
+        
+        logging.debug(f"Connecting client...")
+        await client.connect(config[client_name]['host'],
+                             config[client_name]['port'],
+                             ssl=config[client_name]['ssl'])
+
+        logging.debug(f"Subscribing topics...")
+        for topic in config[client_name]['topics']:
+            logging.debug(f"Subscribing topic {topic}...")
+            client.subscribe(topic, qos=1, no_local=True)
+
+        clients.append(client)
+
+    await termination_event.wait()
+    await disconnect_clients(clients)
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+
+    import yaml
+    logging.config.dictConfig(yaml.load(open("app/logging-config.yaml", 'r')))  # configured via cmdline
+
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('--config', dest='config_path', default='config.yaml')
+    args = arg_parser.parse_args()
+    config = yaml.load(open(args.config_path), Loader=yaml.FullLoader)
+
+    loop.add_signal_handler(signal.SIGINT, set_termination)
+    loop.add_signal_handler(signal.SIGTERM, set_termination)
+
+    loop.run_until_complete(main(config))
