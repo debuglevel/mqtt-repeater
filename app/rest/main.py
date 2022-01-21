@@ -9,37 +9,36 @@ import asyncio
 from typing import List
 import gmqtt
 
-
 termination_event = asyncio.Event()
 
 clients = []
 
-
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
 
 def on_connect(client, flags, rc, properties):
     logging.info('[connected {}]'.format(client._client_id))
 
 
 def on_message(client, topic, payload, qos, properties):
-    logging.debug('[received message {}] topic: {} payload: {} QOS: {} properties: {}'
-                 .format(client._client_id, topic, payload, qos, properties))
+    logging.debug(
+        f'[received message {client._client_id}] topic: {topic} payload: {payload} QOS: {qos} properties: {properties}')
 
-    for client in clients:
-        if client._client_id == client._client_id:
+    for other_client in clients:
+        if other_client._client_id == client._client_id:
             continue
 
         # TODO: republish also properties
-        client.publish(topic, payload, qos=qos)   
+        other_client.publish(topic, payload, qos=qos)
 
 
 def on_disconnect(client, packet, exc=None):
-    logging.info('[disconnected {}]'.format(client._client_id))
+    logging.info(f'[disconnected {client._client_id}]')
 
 
 def on_subscribe(client, mid, qos, properties):
-    logging.info('[subscribed {}] QOS: {}'.format(client._client_id, qos))
+    logging.info(f'[subscribed {client._client_id}] QOS: {qos}')
 
 
 def configure_callbacks(client):
@@ -61,6 +60,7 @@ async def disconnect_clients(clients: List[Client]):
         logging.debug(f"Disconncting client {client}...")
         await client.disconnect()
 
+
 async def main(config):
     global clients
 
@@ -72,7 +72,7 @@ async def main(config):
         configure_callbacks(client)
         client.set_auth_credentials(config[client_name]['username'],
                                     config[client_name]['password'])
-        
+
         logging.debug(f"Connecting client...")
         await client.connect(config[client_name]['host'],
                              config[client_name]['port'],
@@ -93,6 +93,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     import yaml
+
     logging.config.dictConfig(yaml.load(open("app/logging-config.yaml", 'r')))  # configured via cmdline
 
     arg_parser = argparse.ArgumentParser()
