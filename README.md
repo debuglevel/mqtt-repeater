@@ -1,3 +1,11 @@
+# mqtt-repeater
+Subscribes certain topics and republishes them under another topic;
+e.g. a message on `my_devices/DE-AD-BE-EF/temperature` could be republished to `my_devices/kitchen/temperature`.
+This might therefore be a useful tool if you want your IoT to publish on the one hand a stable, technical topic,
+but on the other hand on a meaningful topic. This tool translates/maps the topics.
+
+It probably also republishes all the things via multiple clients on multiple brokers, of you define more than one.
+
 # Python Microservice Template
 
 Python microservice template, inspired by my Kotlin based microservice
