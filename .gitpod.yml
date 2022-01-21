@@ -1,0 +1,13 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - init: pip install -r requirements-dev.txt
+    command: uvicorn app.rest.main:fastapi --port=8080 --reload --log-config=app/logging-config.yaml
+    name: Application Server
+
+ports:
+  - port: 8080
+#onOpen: open-preview # do not open preview, because there is nothing served on /
+#vscode:
+#  extensions:

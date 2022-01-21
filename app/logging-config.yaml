@@ -1,0 +1,61 @@
+# According to https://12factor.net/logs, logs should just be written to stdout (i.e. no files, no rotation, no buffering). This logging configuration implements this suggestion.
+
+version: 1
+disable_existing_loggers: false # if absent, this parameter defaults to true
+incremental: false # incremental - whether the configuration is to be interpreted as incremental to the existing configuration. This value defaults to False.
+
+# Formatters define how log output should look like
+formatters:
+  timestamped-classic-stdout:
+    style: "{" # use {} template syntax instead of %()
+    datefmt: "%Y-%m-%dT%H:%M:%S%z" # ISO-8601 compliant
+    # see https://docs.python.org/3/library/logging.html#logrecord-attributes for variables
+    format: "{asctime:s} [{threadName:s}] {levelname:5s} {name:s}:{funcName:s}():{lineno:d} - {message:s}"
+
+  # If further log processing adds a timestamp, you probably do not want your own timestamp written out.
+  classic-stdout:
+    style: "{" # use {} template syntax instead of %()
+    datefmt: "%Y-%m-%dT%H:%M:%S%z" # ISO-8601 compliant
+    # see https://docs.python.org/3/library/logging.html#logrecord-attributes for variables
+    format: "[{threadName:s}] {levelname:5s} {name:s}:{funcName:s}():{lineno:d} - {message:s}"
+#  # This would create a custom formatter
+#  custom:
+#      (): my.package.customFormatterFactory # indicates that a user-defined instantiation is needed
+#      bar: baz
+#      spam: 99.9
+#      answer: 42
+
+# # Filters can be used to modify a log entry, e.g. by adding additional variables (see https://docs.python.org/3/library/logging.html#logrecord-attributes)
+# # They can also be used to prevent/allow processing the log entry at all
+# filters:
+#   my_filter:
+#     (): path.to.my.filter
+#     some_param: 'some_value'
+
+# Handlers define where to write log output to (e.g. to stdout, a file or SMTP)
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: timestamped-classic-stdout
+    #formatter: classic-stdout
+    #filters:
+    # - my_filter
+    stream: ext://sys.stdout
+
+# loggers:
+#   foo.bar.baz: # corresponds to whatever __name__ in a python module resolves
+#     level: DEBUG # optional
+#     #filters: # optional
+#     #  - my_filter
+#     handlers: # optional
+#       - console
+#     #propagate: ??? # optional
+
+# Configuration for the root logger.
+# Processing is as for any logger, except that the propagate setting will not be applicable.
+# All loggers are descendants of the root logger. Each logger passes log messages on to its parent (as long as propagate=True in the respective loggers; e.g. "foo.bar" -> "foo" -> root). So configuring the root logger is often sufficient if no module should be treated specially.
+root:
+  handlers:
+    - console
+  level: DEBUG

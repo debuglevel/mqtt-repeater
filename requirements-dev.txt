@@ -1,0 +1,29 @@
+# This file is to be used with pip to install required python packages
+# Usage: pip install -r requirements-dev.txt
+
+#mypy
+#isort
+
+# also install regular requirements.txt
+-r requirements.txt
+
+# Formatting
+black==21.6b0
+#flake8
+#autoflake
+
+# Testing
+pytest==6.1.0
+pytest-watch==4.2.0
+pytest-asyncio==0.14.0
+#pytest-cov
+requests==2.24.0
+
+# Testing against multiple environments
+tox==3.23.1
+
+# Check type annotations
+mypy==0.910
+## Observe values during runtime and generate annotations
+# TODO: does not seem to work easily with FastAPI
+#MonkeyType==21.5.0

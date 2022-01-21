@@ -1,0 +1,16 @@
+# This file is to be used with pip to install required python packages
+# Usage: pip install -r requirements.txt
+
+PyYAML==5.4.1
+
+# REST/HTTP
+fastapi==0.65.3
+uvicorn==0.14.0
+aiofiles=0.7.0
+
+# Persistence
+tinydb==4.4.0
+#mysql-connector-python==8.0.22
+
+# Retry
+#tenacity==6.2.0
