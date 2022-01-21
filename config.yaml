@@ -4,8 +4,13 @@ hivemq:
   port: "1883"
   username: ""
   password: ""
-  topics:
-    - "debuglevel/OpenMQTTGateway/#"
+  subscribed_topics:
+    - "debuglevel/OpenMQTTGateway/gateways/byMac/#"
+  mapped_topics:
+    - from: "debuglevel/OpenMQTTGateway/gateways/byMac/30C6F7001130"
+      to:
+        - "debuglevel/OpenMQTTGateway/gateways/byName/ESP32-01"
+        - "debuglevel/devnull/"
   ssl: false
 
 

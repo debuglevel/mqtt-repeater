@@ -17,6 +17,28 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+def map_topic(client, topic: str) -> List[str]:
+    logging.debug(f"Mapping {topic}...")
+
+    new_topics = []
+
+    for mapped_topic in config[client._client_id]["mapped_topics"]:
+        if topic.startswith(mapped_topic["from"]):
+            logging.debug(f"{mapped_topic} starts with {mapped_topic['from']}")
+
+            for to_topic in mapped_topic["to"]:
+                new_topic = topic.replace(mapped_topic["from"],
+                                          to_topic)
+
+                logging.debug(f"Mapped {mapped_topic['from']} to {new_topic}")
+                new_topics.append(new_topic)
+        else:
+            logging.debug(f"{mapped_topic} does not start with {mapped_topic['from']}")
+
+    logging.debug(f"Mapped {topic} to {len(new_topics)} topics: {new_topics}")
+    return new_topics
+
+
 def on_connect(client, flags, rc, properties):
     logging.info('[connected {}]'.format(client._client_id))
 
@@ -25,12 +47,16 @@ def on_message(client, topic, payload, qos, properties):
     logging.debug(
         f'[received message {client._client_id}] topic: {topic} payload: {payload} QOS: {qos} properties: {properties}')
 
-    for other_client in clients:
-        if other_client._client_id == client._client_id:
-            continue
+    new_topics = map_topic(client, topic)
 
-        # TODO: republish also properties
-        other_client.publish(topic, payload, qos=qos)
+    for other_client in clients:
+        # if other_client._client_id == client._client_id:
+        #     continue
+
+        for new_topic in new_topics:
+            # TODO: republish also properties
+            logging.debug(f"Republishing {topic} as {new_topic} on {client._client_id}...")
+            other_client.publish(new_topic, payload, qos=qos)
 
 
 def on_disconnect(client, packet, exc=None):
@@ -61,8 +87,9 @@ async def disconnect_clients(clients: List[Client]):
         await client.disconnect()
 
 
-async def main(config):
+async def main():
     global clients
+    global config
 
     logging.info(f"Connecting clients...")
     for client_name in config.keys():
@@ -79,7 +106,7 @@ async def main(config):
                              ssl=config[client_name]['ssl'])
 
         logging.debug(f"Subscribing topics...")
-        for topic in config[client_name]['topics']:
+        for topic in config[client_name]['subscribed_topics']:
             logging.debug(f"Subscribing topic {topic}...")
             client.subscribe(topic, qos=1, no_local=True)
 
@@ -104,4 +131,4 @@ if __name__ == '__main__':
     loop.add_signal_handler(signal.SIGINT, set_termination)
     loop.add_signal_handler(signal.SIGTERM, set_termination)
 
-    loop.run_until_complete(main(config))
+    loop.run_until_complete(main())
