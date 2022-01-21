@@ -67,6 +67,7 @@ async def main(config):
     logging.info(f"Connecting clients...")
     for client_name in config.keys():
         logging.debug(f"Configuring client...")
+        # TODO: should probably not be just named liked this, but have a random part.
         client = gmqtt.Client(client_name, clean_session=False, session_expiry_interval=0xFFFFFFFF)
         configure_callbacks(client)
         client.set_auth_credentials(config[client_name]['username'],
